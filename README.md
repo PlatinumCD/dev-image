@@ -22,33 +22,33 @@ This is a personal Docker image set up for C++ development with Neovim and vario
 
 To build the Docker image:
 
-\```bash
+```bash
 make build
-\```
+```
 
 ### Run the Docker Container
 
 To start a container with the image:
 
-\```bash
+```bash
 make run
-\```
+```
 
 ### Push the Image to Docker Registry
 
 If you need to push the image:
 
-\```bash
+```bash
 make push
-\```
+```
 
 ### Clean Up Local Images
 
 To remove the Docker image locally:
 
-\```bash
+```bash
 make clean
-\```
+```
 
 ## Neovim Configuration
 
