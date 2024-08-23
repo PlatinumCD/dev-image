@@ -1,0 +1,28 @@
+{
+  "clangd.arguments": [
+    "--background-index=true",
+    "--cross-file-rename=true",
+    "--completion-style=bundled",
+    "--header-insertion=iwyu",
+    "--header-insertion-decorators=0"
+  ],
+  "inlayHint.enable": false,
+  "clangd.semanticHighlighting": true,
+  "clangd.compilationDatabasePath": "",
+  "clangd.checkUpdates": true,
+  "clangd.disableDiagnostics": false,
+  "suggest.noselect": false,
+  "suggest.minTriggerInputLength": 1,
+  "suggest.fromRuntimepath": true,
+  "suggest.localityBonus": true,
+  "suggest.languageSources": {
+    "clangd": true
+  },
+  "suggest.snippetsSupport": true,
+
+  "diagnostic.virtualText": true,
+  "diagnostic.virtualTextFormat": "%message",
+  "diagnostic.messageTarget": "none",
+  "diagnostic.floatEnable": false,
+  "diagnostic.messageLimit": 1
+}
