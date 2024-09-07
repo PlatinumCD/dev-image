@@ -8,6 +8,9 @@ vim.o.signcolumn = 'yes:1'
 vim.o.tabstop = 4
 vim.o.shiftwidth = 4
 vim.o.expandtab = true
+vim.o.cursorline = true
+
+vim.opt.shell = "/bin/bash"
 
 -- Plugin section with vim-plug
 vim.cmd [[
