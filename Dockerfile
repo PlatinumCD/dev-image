@@ -9,27 +9,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt update -y && \
     apt install --no-install-recommends -y \
         automake bat build-essential cmake curl fzf gdb git gpg gpg-agent htop jq libssl-dev \
-        make neofetch ninja-build pkg-config pip python3-pip ripgrep shellcheck tmux \
+        make neofetch ninja-build pkg-config pip python3-pip ripgrep shellcheck gettext tmux \
         tree valgrind wget zlib1g-dev sudo software-properties-common file libzstd-dev \
-        cscope fonts-firacode graphviz cloc unzip ffmpeg && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Neovim from PPA
-RUN add-apt-repository ppa:neovim-ppa/unstable && \
-    apt update && \
-    apt install --no-install-recommends -y neovim && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
-    apt install --no-install-recommends -y nodejs && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Python packages
-RUN pip3 install --no-cache-dir ipython pandas numpy matplotlib seaborn torch
+        cscope fonts-firacode graphviz cloc unzip ffmpeg zip cargo 
 
 # Add LLVM 18 APT repository, install, and clean up afterward
 RUN echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee /etc/apt/sources.list.d/llvm-toolchain-jammy-18.list && \
@@ -41,15 +23,27 @@ RUN echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee /et
         libc++-18-dev libc++1-18 libc++abi-18-dev libc++abi1-18 \
         libclang-18-dev libclang1-18 liblldb-18-dev libllvm-18-ocaml-dev \
         libomp-18-dev libomp5-18 lld-18 lldb-18 llvm-18-dev llvm-18-runtime \
-        llvm-18 python3-clang-18 libpolly-18-dev && \
-    apt clean && \
-    rm -rf /var/lib/apt/lists/*
+        llvm-18 python3-clang-18 libpolly-18-dev
 
 # Set LLVM alternatives
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100 && \
     update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-18 100 && \
     update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-18 100
+
+# Install Python packages
+RUN pip3 install --no-cache-dir ipython pandas numpy matplotlib seaborn torch pylint plotly jupyterlab
+
+# Install Neovim from GitHub
+RUN git clone --branch v0.10.1 https://github.com/neovim/neovim.git && \
+    cd neovim && \
+    make -j 4 && \
+    make install && \
+    cd .. && rm -rf neovim
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
+    apt install --no-install-recommends -y nodejs
 
 # Neovim configuration
 RUN mkdir -p /root/.config/nvim && \
@@ -59,6 +53,14 @@ RUN mkdir -p /root/.config/nvim && \
 # Copy Neovim config files
 COPY resources/init.lua /root/.config/nvim/init.lua
 COPY resources/coc-settings.json /root/.config/nvim/coc-settings.json
+
+# Clone and build avante.nvim with Rust
+RUN git clone https://github.com/PlatinumCD/avante.nvim.git /root/.config/nvim/avante.nvim && \
+    cd /root/.config/nvim/avante.nvim && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . "$HOME/.cargo/env" && \
+    rustup update && \
+    make
 
 # Install Neovim plugins
 RUN nvim --headless +PlugInstall +qall && \

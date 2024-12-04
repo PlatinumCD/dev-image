@@ -18,6 +18,10 @@ vim.cmd [[
   Plug 'bfrg/vim-cpp-modern'
   Plug 'rainglow/vim'
   Plug 'neoclide/coc.nvim', {'branch': 'release'}
+  Plug 'nvim-lua/plenary.nvim'
+  Plug 'MeanderingProgrammer/render-markdown.nvim'
+  Plug 'MunifTanjim/nui.nvim'
+  Plug '/root/.config/nvim/avante.nvim' 
   call plug#end()
 ]]
 
@@ -28,6 +32,14 @@ vim.cmd [[
   highlight PmenuThumb ctermbg=blue guibg=#4C566A
 ]]
 
+-- deps:
+require('render-markdown').setup ({
+  -- use recommended settings from above
+})
+require('avante_lib').load()
+require('avante').setup ({
+  -- Your config here!
+})
 
 vim.g.coc_global_extensions = {'coc-clangd'}
 vim.o.pumheight = 4
