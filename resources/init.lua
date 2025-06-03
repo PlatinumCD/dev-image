@@ -38,7 +38,10 @@ require('render-markdown').setup ({
 })
 require('avante_lib').load()
 require('avante').setup ({
-  -- Your config here!
+    provider = "openai",
+    windows = {
+        width = 30
+    }
 })
 
 vim.g.coc_global_extensions = {'coc-clangd'}

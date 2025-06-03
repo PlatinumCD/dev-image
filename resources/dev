@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# Define color codes for output
+YELLOW='\033[0;33m'
+NO_COLOR='\033[0m'
+
+# Default values
+IMAGE_URI=platinumcd/cfd-dev-image:latest
+PORT=""
+OFFLINE=false
+
+# Function to display usage
+usage() {
+    echo "Usage: $0 [-p <port>] [--offline]"
+    echo
+    echo "Options:"
+    echo "  -p <port>      Specify the port to bind"
+    echo "  --offline      Do not pull the latest Docker image"
+    exit 1
+}
+
+# Parse arguments
+# Use a while loop to handle both short and long options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -p)
+            if [[ -n "$2" && ! "$2" =~ ^- ]]; then
+                PORT="$2"
+                shift 2
+            else
+                echo "Error: -p requires a port number"
+                usage
+            fi
+            ;;
+        --offline)
+            OFFLINE=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            ;;
+        *)
+            echo "Unexpected argument: $1"
+            usage
+            ;;
+    esac
+done
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "Docker is not running. Attempting to start Docker..."
+    open -a Docker
+
+    # Wait for Docker to start
+    while ! docker system info > /dev/null 2>&1; do
+        sleep 0.5
+    done
+    echo "Docker started successfully."
+fi
+
+# Download image unless offline mode is enabled
+if [ "$OFFLINE" = false ]; then
+    echo "Pulling Docker image: $IMAGE_URI"
+    if ! docker pull "$IMAGE_URI" > /dev/null 2>&1; then
+        echo "Failed to pull image: $IMAGE_URI"
+        exit 1
+    fi
+else
+    echo "Offline mode enabled. Skipping image pull."
+    # Check if the image exists locally
+    if ! docker image inspect "$IMAGE_URI" > /dev/null 2>&1; then
+        echo "Error: Image $IMAGE_URI not found locally. Please run without --offline to pull the image."
+        exit 1
+    fi
+fi
+
+# Construct Docker run command
+OPENAI_API_KEY=""
+GEMINI_API_KEY=""
+
+HOST_DIR="$HOME/Develop"
+CONTAINER_DIR="/root/Develop"
+
+# Define the Docker run command
+DOCKER_RUN_CMD="docker run -it -e OPENAI_API_KEY=$OPENAI_API_KEY -e GEMINI_API_KEY=$GEMINI_API_KEY -v \"$HOST_DIR:$CONTAINER_DIR\""
+
+# Add port mapping if specified
+if [ -n "$PORT" ]; then
+    DOCKER_RUN_CMD+=" -p $PORT:$PORT"
+    echo -e "Entering ${YELLOW}cfd-dev${NO_COLOR} image on port $PORT"
+else
+    echo -e "Entering ${YELLOW}cfd-dev${NO_COLOR} image"
+fi
+
+# Append the image URI
+DOCKER_RUN_CMD+=" \"$IMAGE_URI\""
+
+# Execute the Docker run command
+eval $DOCKER_RUN_CMD
