@@ -7,6 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 ENV TASKRC=~/Develop/dev-image/data_dir/taskwarrior/taskrc
 ENV TASKDATA=~/Develop/dev-image/data_dir/taskwarrior/
+ENV TRADEJOURNAL_ROOT=~/Develop/dev-image/data_dir/tradejournal
 
 # Install general packages, clean up APT cache afterward
 RUN apt update -y && \
@@ -15,6 +16,11 @@ RUN apt update -y && \
         make neofetch ninja-build pkg-config pip python3-pip ripgrep shellcheck gettext tmux \
         tree valgrind wget zlib1g-dev sudo software-properties-common file libzstd-dev \
         cscope fonts-firacode graphviz cloc unzip ffmpeg zip cargo taskwarrior
+
+# Install TeX Live with tlmgr
+RUN apt-get install --no-install-recommends -y \
+    texlive texlive-latex-extra texlive-fonts-recommended texlive-fonts-extra \
+    texlive-bibtex-extra texlive-lang-english
 
 # Add LLVM 18 APT repository, install, and clean up afterward
 RUN echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | tee /etc/apt/sources.list.d/llvm-toolchain-jammy-18.list && \
@@ -39,51 +45,56 @@ RUN wget -qO /tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/d
     dpkg -i /tmp/quarto.deb && \
     rm /tmp/quarto.deb
 
+# Install TinyTeX manually (ARM-compatible)
+RUN wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh && \
+    mv ~/bin/* /usr/local/bin/. 2>/dev/null || true && \
+    rmdir ~/bin 2>/dev/null || true
+
 # Install Python packages
-RUN pip3 install --no-cache-dir ipython pandas numpy matplotlib seaborn torch pylint plotly jupyterlab notebook docling
+RUN pip3 install --no-cache-dir ipython pandas numpy matplotlib seaborn torch pylint plotly jupyterlab notebook docling tradejournal==0.1.0
 RUN jupyter labextension enable widgetsnbextension
 
-# Install Neovim from GitHub
-RUN git clone --branch v0.10.1 https://github.com/neovim/neovim.git && \
-    cd neovim && \
-    make -j 4 && \
-    make install && \
-    cd .. && rm -rf neovim
+# Install Emscripten SDK
+RUN git clone https://github.com/emscripten-core/emsdk.git /opt/emsdk && \
+    cd /opt/emsdk && \
+    ./emsdk install latest && \
+    ./emsdk activate latest
 
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - && \
-    apt install --no-install-recommends -y nodejs
+ENV EMSDK=/opt/emsdk
+ENV EM_CONFIG=/opt/emsdk/.emscripten
+ENV PATH="${EMSDK}:${EMSDK}/upstream/emscripten:${EMSDK}/node/$(ls ${EMSDK}/node)/bin:${PATH}"
 
-# Neovim configuration
-RUN mkdir -p /root/.config/nvim && \
-    curl -fLo /root/.local/share/nvim/site/autoload/plug.vim --create-dirs \
-    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+# Install Neovim (prebuilt binary)
+RUN curl -L https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-linux-arm64.tar.gz \
+    | tar -xz && \
+    cp -r nvim-linux-arm64/* /usr/local/ && \
+    rm -rf nvim-linux-arm64
 
-# Copy Neovim config files
-COPY resources/coc-settings.json /root/.config/nvim/coc-settings.json
+# Install Node.js v24 (prebuilt)
+RUN curl -fsSL https://nodejs.org/dist/v24.0.0/node-v24.0.0-linux-arm64.tar.xz \
+    | tar -xJ && \
+    cp -r node-v24.0.0-linux-arm64/* /usr/local/ && \
+    rm -rf node-v24.0.0-linux-arm64
+
+# Install lazy.nvim
+RUN git clone https://github.com/folke/lazy.nvim.git \
+    /root/.local/share/nvim/lazy/lazy.nvim
+
 COPY resources/init.lua /root/.config/nvim/init.lua
+COPY resources/yitzchok-contrast.vim /root/.config/nvim/colors/yitzchok-contrast.vim
 
-# Clone and build avante.nvim with Rust
-RUN git clone --branch v0.0.24 https://github.com/yetone/avante.nvim.git /root/.config/nvim/avante.nvim && \
-    cd /root/.config/nvim/avante.nvim && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . "$HOME/.cargo/env" && \
-    rustup update && \
-    make
+RUN tlmgr install xstring microtype totpages libertine everyshi environ hyperxmp ifmtarg oberdiek ncctools cmap comment caption fancyhdr bibtools newtx preprint upquote doclicense xifthen ccicons csquotes
 
-# Install Neovim plugins
-RUN nvim --headless +PlugInstall +qall && \
-    nvim --headless +"CocInstall -sync coc-clangd|q" && \
-    nvim --headless +"CocInstall -sync coc-python|q" && \
-    echo 'vim.cmd("colorscheme yitzchok-contrast")' >> /root/.config/nvim/init.lua
-
-# Set up shell aliases and prompt in a single command to reduce layers
+## Set up shell aliases and prompt in a single command to reduce layers
 RUN echo 'export PS1="\[\e[33m\]cfd-dev\[\e[0m\] \W $ "\n' \
     'alias vim="nvim"\n' \
     'alias vimdiff="nvim -d"\n' \
     'alias cat="batcat --paging=never --style header,numbers"' >> /root/.bashrc
 
-# Set up github email
+RUN nvim --headless "+Lazy! sync" +qa
+
+## Set up github email
+#RUN git config --global user.email "cameronfdurbin@gmail.com"
 
 # Set working directory
 WORKDIR /root
